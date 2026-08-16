@@ -1,79 +1,65 @@
-# 🏹 Sherwood Protocol ($ARROW)
+# A: ATTENTION MARKETS
 
-**Take from the trades. Give to the holders.**
+**Attention is currency. Attention is power.**
 
-Sherwood Protocol is a Solana token that automates the whole loop of a
-fee-funded, self-distributing token:
+A Bloomberg-style terminal for the attention economy, powered by its own
+token's fees. The engine runs four loops, forever:
 
-1. **Launch** on pump.fun (or self-launch via Token-2022 transfer fees — see below).
-2. **Harvest** — claim pump.fun's creator-fee share of trading volume.
-3. **Split** — a configurable share compounds into the ARROW/SOL liquidity pool, the rest funds a rewards vault.
-4. **Snapshot** — every 15 minutes, every holder's balance is recorded.
-5. **Airdrop** — the rewards vault pays out pro-rata to every eligible holder, automatically, no claiming.
+1. **CLAIM** — every 15 minutes, the coin's pump.fun creator fees are claimed
+   into the treasury and split on a public ledger: **50% buybacks / 50%
+   attention rewards**.
+2. **SCAN** — every hour the Attention Scanner sweeps the markets: boosted
+   DexScreener tokens, CoinGecko trending, news headlines, trend slots — and
+   ranks everything by a composite attention score on the terminal.
+3. **PAY** — post about the ticker on X, log the link in the terminal (one
+   signed message, no gas), earn **attention points**. Every weekly epoch, the
+   rewards pool pays contributors pro-rata by points, in SOL. Lifetime points
+   track tier (**OBSERVER → SIGNAL → AMPLIFIER → OPERATOR → INSIDER**) and
+   airdrop eligibility.
+4. **MONETIZE** — projects buy ad slots on the terminal, paid in SOL, verified
+   on-chain. Revenue splits **90% buybacks / 10% development**. Buybacks
+   execute automatically on schedule.
 
-This repo is the full working implementation: on-chain interactions, the
-scheduler/bot, a SQLite ledger of every snapshot and payout, a stats API, and
-a professional marketing website that reads live from it.
+## Stack
 
-## Why "Sherwood," not "Robinhood"
-
-The mechanic mirrors the Robin Hood story — take from the (trading) rich,
-give to the (holding) poor — but the project deliberately avoids the actual
-"Robinhood" brand name. Using a real brokerage's name/ticker for an
-unaffiliated crypto token would misleadingly imply a partnership and likely
-infringe their trademark. See `docs/DISCLAIMER.md` for the full rationale
-and other legal/risk notes worth reading before you launch this for real.
-
-## Repo layout
+| Piece | Runs on | What it does |
+|---|---|---|
+| `packages/website` | **Vercel** | The terminal: scanner, flywheel, leaderboard, your-terminal, adspace, wire |
+| `packages/engine` | **Railway** | Claims + splits fees, buybacks, scanner, points, epochs, ads, API |
+| `supabase/` | **Supabase** | Public ledger: claims, buybacks, posts, epochs, payouts, ads, scans |
 
 ```
 packages/
-  shared/          env config, shared types, RPC helper
-  token-launch/    optional Token-2022 self-launch mint (transfer-fee extension)
-  fee-harvester/   claims pump.fun creator fees + Token-2022 withheld fees, splits them
-  autolp/          deposits the LP-bound share into the Raydium pool
-  snapshot-bot/    the 15-minute cron: snapshot holders -> compute payouts -> airdrop -> persist -> serve /api/stats
-  website/         Next.js + Tailwind marketing site & live dashboard
-docs/
-  ARCHITECTURE.md  data-flow diagram + package responsibilities
-  DEPLOYMENT.md    step-by-step devnet -> mainnet guide
-  DISCLAIMER.md    legal / risk / trademark notes — read before launching publicly
+  shared/          config, types, signed-message formats
+  fee-harvester/   claims pump.fun creator fees (bonding curve + PumpSwap)
+  engine/          the four loops + terminal API        ← Railway
+  website/         the terminal (Next.js + Tailwind)    ← Vercel
+supabase/migrations/  full schema, RLS public-read
+docs/              ARCHITECTURE · DEPLOYMENT · DISCLAIMER
 ```
 
-## Quickstart (devnet)
+## Quickstart (local, devnet)
 
 ```bash
 npm install
-cp .env.example .env          # fill in mint + wallet paths, see docs/DEPLOYMENT.md
-npm run build
-npm run start:bot              # scheduler + stats API
-npm run dev:website             # marketing site, in a separate shell
+cp .env.example .env             # mint, treasury keypair, Supabase creds, ADMIN_KEY
+# run supabase/migrations/0001_init.sql in the Supabase SQL editor
+npm run start:engine             # loops + API on :4000
+npm run dev:website              # terminal on :3000
 ```
 
-Full walkthrough, including generating wallets and choosing between the
-pump.fun launch path and the self-launch Token-2022 path: **`docs/DEPLOYMENT.md`**.
+Production walkthrough: **`docs/DEPLOYMENT.md`**.
 
-## How the fee source actually works
+## Honesty notes
 
-pump.fun tokens are plain SPL mints — there's no per-transfer tax to hook
-into. The real lever is pump.fun's **creator-fee sharing** program: the
-wallet that creates a coin can claim a share of its trading fees at any
-time via a permissionless `collectCreatorFee` instruction. Sherwood's
-harvester automates that claim (see
-`packages/fee-harvester/src/harvestPumpFunCreatorFees.ts`, built against
-pump.fun's public program docs) rather than pretending pump.fun supports an
-automatic transfer tax it doesn't. Full details in `docs/ARCHITECTURE.md`.
-
-## Status
-
-This is a complete, readable reference implementation — not a deployed,
-funded, live token. No mainnet transaction has been made on your behalf.
-Before you launch it for real: read `docs/DISCLAIMER.md`, get independent
-legal advice on the securities-law implications of marketing recurring
-holder payouts, and consider a multisig for the fee/LP/rewards wallets
-instead of single-signer keypairs.
-
-## License
-
-MIT — see the tokenomics/legal notes in `docs/DISCLAIMER.md` for why that
-doesn't mean "risk-free to deploy."
+- The scanner's DexScreener + CoinGecko sources are live with no keys. News
+  activates with `NEWS_API_KEY`; TikTok needs a trends provider plugged into
+  one function (`scanner.ts`). The terminal displays each source's real
+  status — nothing pretends to be live.
+- X posts auto-verify (mention check + engagement-weighted points) when
+  `X_BEARER_TOKEN` is set; otherwise submissions queue for manual review
+  through the admin endpoint. No token, no honor-system points.
+- Every claim, buyback, reward payout, and ad payment is an on-chain
+  signature recorded in Supabase and printed on the Wire.
+- "Airdrop eligibility" is tracked transparently and promised nowhere. Read
+  `docs/DISCLAIMER.md` before going live.

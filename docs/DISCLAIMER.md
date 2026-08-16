@@ -1,57 +1,57 @@
-# Legal & risk disclaimer
+# Read before going live
 
-This repository is a **technical reference implementation**, not a
-launched product, financial offering, or investment vehicle. Before using
-any part of it to launch a real token that the public can buy:
+This repo is a working reference implementation. Deploying it for real
+people and real money is **your** decision and responsibility.
 
-## Not affiliated with Robinhood
+## Buyback marketing is securities bait
 
-"Sherwood Protocol" and "$ARROW" deliberately do **not** use the name,
-logo, ticker (`HOOD`), or branding of Robinhood Markets, Inc. Naming a
-token after a real, regulated financial company would falsely imply a
-partnership or endorsement that doesn't exist, and would likely infringe
-Robinhood's trademarks. The "take from the trades, give to the holders"
-theme is drawn from the public-domain Robin Hood folk tale, not the
-brokerage.
+"Hold the token; fees and revenue buy it back on a schedule" is precisely
+the kind of value-accrual language securities regulators quote back at
+projects. How you market this matters as much as how it works. Get real
+legal advice before launch, not after.
 
-## Not affiliated with pump.fun
+## Paying people to post is regulated
 
-This project integrates with pump.fun's public program and fee-sharing
-system as a *user* of that platform, the same way any other token creator
-would. It is not built, endorsed, or reviewed by pump.fun.
+The attention-rewards loop pays people for promoting a tradeable asset.
+In the US that triggers disclosure obligations (FTC endorsement rules; and
+for securities, §17(b) "touting" liability applies to paid promotion that
+isn't disclosed). The terminal's public leaderboard helps, but the people
+posting must disclose they're compensated. Undisclosed shill armies are
+how projects and promoters both get charged.
 
-## Securities-law exposure
+## Airdrop language
 
-A token that is marketed with the promise of automatic, recurring payouts
-to holders can look a lot like an investment contract to a regulator (the
-Howey test, in the US, or equivalent tests elsewhere). Whether that's the
-case depends heavily on how the project is marketed, who controls the fee
-flow, and your jurisdiction. This repo does not constitute legal advice.
-**Get independent legal review before publicly launching and marketing a
-token with this mechanism**, especially before soliciting money from
-people who aren't sophisticated crypto users.
+The terminal deliberately says "eligibility tracking — never a promise."
+Keep it that way everywhere you communicate. Promising a future token
+distribution creates both expectations and legal exposure; walking back a
+promised airdrop after people worked for points is how communities die and
+lawsuits start.
 
-## Rug-pull-shaped mechanics, used honestly or not
+## Ads are publisher liability
 
-Fee-collecting tokens with an admin-controlled treasury wallet are a
-common scam pattern: the "harvester" quietly routes fees to the founder
-instead of holders, or the founder holds the fee/mint authority and drains
-liquidity later. Nothing in this code prevents that — the fee authority,
-LP vault, and rewards vault keypairs are simply wallets someone controls.
-If you deploy this for real:
+You're selling ad space with no review before payment. The admin reject
+endpoint exists — use it. Scam links, impersonation, and malware in your
+ad slots become your problem reputationally and possibly legally. Consider
+pre-moderation (flip the flow: approve, then charge).
 
-- Consider a multisig (e.g. Squads) for the fee authority and vaults
-  instead of single-signer keypairs.
-- Publish the vault addresses and make the harvest/distribution logic
-  (this repo) publicly auditable, which is why it's structured as
-  transparent, readable TypeScript rather than an opaque bot.
-- Consider timelocking or renouncing the ability to change the LP/rewards
-  split after launch, so it can't be quietly changed to 100% team.
+## Custody and key risk
 
-## No warranty
+The creator wallet is the treasury: fees, buyback pool, rewards pool, ad
+revenue — one keypair, sitting in Railway env vars. Anyone with project
+access holds the bankroll. Minimal collaborator access; sweep excess to
+cold storage; the creator wallet itself can never be rotated.
 
-This code is provided as-is, has not been professionally audited, moves
-real funds if you point it at mainnet with a funded wallet, and interacts
-with third-party programs (pump.fun, Raydium) whose interfaces can change
-without notice. Test thoroughly on devnet first. You are responsible for
-any funds you put behind it.
+## Dependency honesty
+
+pump.fun's SDKs and fee program are theirs to change (they've shipped
+breaking changes before). The scanner leans on free public APIs
+(DexScreener, CoinGecko) with no SLA. The engine degrades gracefully —
+skipped buybacks, source status flags — but "degraded and honest" still
+needs you watching the logs.
+
+## Operational honesty
+
+The site advertises exact splits (50/50 fees, 90/10 revenue) and prints
+every movement with tx signatures. Quietly diverging from advertised
+splits while collecting ad money and promotion labor is fraud in most
+places. Keep the ledger truthful.

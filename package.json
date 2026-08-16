@@ -1,8 +1,8 @@
 {
-  "name": "sherwood-protocol",
+  "name": "attention-markets",
   "private": true,
   "version": "0.1.0",
-  "description": "Sherwood Protocol ($ARROW) — a Solana token that harvests pump.fun creator fees, auto-compounds a share into liquidity, and airdrops the rest to holders every 15 minutes.",
+  "description": "ATTENTION MARKETS \u2014 the attention terminal. Creator fees power the ecosystem: 50% buybacks / 50% attention rewards; ad revenue 90% buybacks / 10% development. Attention is currency.",
   "workspaces": [
     "packages/*"
   ],
@@ -11,10 +11,16 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev:website": "npm run dev --workspace packages/website",
-    "start:bot": "npm run start --workspace packages/snapshot-bot"
+    "start:engine": "npm run start --workspace packages/engine"
   },
   "engines": {
     "node": ">=18.18.0"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0"
   },
   "license": "MIT"
 }
