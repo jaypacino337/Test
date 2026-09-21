@@ -7,6 +7,7 @@ import { shortAddress, sol } from "@/lib/format";
 
 const NAV = [
   { href: "/", label: "Explore" },
+  { href: "/swap", label: "Swap" },
   { href: "/launch", label: "Launch" },
   { href: "/portfolio", label: "Portfolio" },
   { href: "/how-it-works", label: "How it works" },

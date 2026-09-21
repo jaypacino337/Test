@@ -13,6 +13,7 @@ import { Basket, SOL_USD, Trade, seedBaskets, seedTrades } from "./baskets";
 import { CurveState, quoteBuy, quoteSell, spotPrice } from "./curve";
 import { hashSeed, mulberry32 } from "./rng";
 import { TOKENS, fakeAddress } from "./tokens";
+import { SwapQuote, quoteSwap } from "./swap";
 
 const STORAGE_KEY = "basketlaunch.beta.v1";
 const TICK_MS = 2000;
@@ -30,11 +31,24 @@ interface Wallet {
   solBalance: number;
 }
 
+export interface SwapRecord {
+  id: string;
+  from: string;
+  to: string;
+  amountIn: number;
+  amountOut: number;
+  path: string[];
+  at: number;
+}
+
 interface PersistedState {
   wallet: Wallet;
   positions: Position[];
   localBaskets: Basket[];
   curveOverrides: Record<string, CurveState>;
+  /** Spot balances for every non-native asset, keyed by symbol. */
+  tokenBalances: Record<string, number>;
+  swaps: SwapRecord[];
 }
 
 interface StoreValue extends PersistedState {
@@ -48,6 +62,8 @@ interface StoreValue extends PersistedState {
   disconnect: () => void;
   buy: (slug: string, solIn: number) => void;
   sell: (slug: string, tokensIn: number) => void;
+  swap: (from: string, to: string, amountIn: number, slippageBps: number) => SwapQuote | null;
+  balanceOf: (symbol: string) => number;
   launch: (draft: Omit<Basket, "creator" | "mint" | "createdAt" | "holders" | "vault">) => void;
   positionFor: (slug: string) => Position | undefined;
   reset: () => void;
@@ -66,8 +82,24 @@ function initialWallet(): Wallet {
   return { address: fakeAddress("demo-wallet"), connected: false, solBalance: 24.5 };
 }
 
+/** Starting bags, so a fresh visitor has something to swap on both sides. */
+const STARTING_BALANCES: Record<string, number> = {
+  USDX: 2500,
+  SOLR: 6.4,
+  KITN: 4_200_000,
+  TNSR: 38,
+  PLNK: 52_000,
+};
+
 function initialPersisted(): PersistedState {
-  return { wallet: initialWallet(), positions: [], localBaskets: [], curveOverrides: {} };
+  return {
+    wallet: initialWallet(),
+    positions: [],
+    localBaskets: [],
+    curveOverrides: {},
+    tokenBalances: { ...STARTING_BALANCES },
+    swaps: [],
+  };
 }
 
 function basePrices(): Record<string, number> {
@@ -82,6 +114,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [epoch, setEpoch] = useState(BOOT);
   const [ready, setReady] = useState(false);
   const tickRef = useRef(0);
+  const pricesRef = useRef<Record<string, number>>(basePrices());
 
   // Hydrate from localStorage after mount — never during render, so the
   // server-rendered markup and the first client pass stay identical.
@@ -126,6 +159,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const drift = (rand() - 0.5) * token.vol * 0.22;
           next[token.symbol] = Math.max(last * (1 + drift), token.spot * 0.2);
         }
+        pricesRef.current = next;
         return next;
       });
 
@@ -242,6 +276,51 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [recordTrade],
   );
 
+  const swap = useCallback<StoreValue["swap"]>(
+    (from, to, amountIn, slippageBps) => {
+      let executed: SwapQuote | null = null;
+
+      setPersisted((state) => {
+        const balance = from === "SOL" ? state.wallet.solBalance : state.tokenBalances[from] ?? 0;
+        if (!(amountIn > 0) || amountIn > balance) return state;
+
+        const quote = quoteSwap(from, to, amountIn, pricesRef.current, slippageBps);
+        if (!quote || quote.amountOut <= 0) return state;
+        executed = quote;
+
+        const balances = { ...state.tokenBalances };
+        let solBalance = state.wallet.solBalance;
+
+        if (from === "SOL") solBalance -= amountIn;
+        else balances[from] = (balances[from] ?? 0) - amountIn;
+
+        if (to === "SOL") solBalance += quote.amountOut;
+        else balances[to] = (balances[to] ?? 0) + quote.amountOut;
+
+        return {
+          ...state,
+          wallet: { ...state.wallet, solBalance },
+          tokenBalances: balances,
+          swaps: [
+            {
+              id: `swap-${Date.now()}`,
+              from,
+              to,
+              amountIn,
+              amountOut: quote.amountOut,
+              path: quote.route.path,
+              at: Date.now(),
+            },
+            ...state.swaps,
+          ].slice(0, 25),
+        };
+      });
+
+      return executed;
+    },
+    [],
+  );
+
   const launch = useCallback<StoreValue["launch"]>((draft) => {
     setPersisted((state) => ({
       ...state,
@@ -275,11 +354,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setPersisted((state) => ({ ...state, wallet: { ...state.wallet, connected: false } })),
       buy,
       sell,
+      swap,
       launch,
+      balanceOf: (symbol: string) =>
+        symbol === "SOL" ? persisted.wallet.solBalance : persisted.tokenBalances[symbol] ?? 0,
       positionFor: (slug: string) => persisted.positions.find((entry) => entry.slug === slug),
       reset: () => setPersisted(initialPersisted()),
     }),
-    [persisted, baskets, trades, prices, now, ready, buy, sell, launch],
+    [persisted, baskets, trades, prices, now, ready, buy, sell, swap, launch],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

@@ -25,6 +25,20 @@ export function compact(value: number): string {
   return Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 2 }).format(value);
 }
 
+/**
+ * Token amounts, which span from billions of meme-coin units down to fractions
+ * of a SOL. `compact` alone rounds anything under ~0.005 to "0", so small
+ * balances and cross-pair rates need real precision.
+ */
+export function quantity(value: number): string {
+  if (!Number.isFinite(value) || value === 0) return "0";
+  const abs = Math.abs(value);
+  if (abs >= 1000) return compact(value);
+  if (abs >= 1) return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  if (abs >= 0.000001) return value.toLocaleString("en-US", { maximumFractionDigits: 8 });
+  return value.toExponential(2);
+}
+
 /** 7Fq2…9xKd — the usual truncated-pubkey treatment. */
 export function shortAddress(address: string, lead = 4, tail = 4): string {
   if (address.length <= lead + tail) return address;
