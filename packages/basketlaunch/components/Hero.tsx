@@ -5,12 +5,13 @@ import { changePct, marketCapUsd, priceHistory, priceUsd } from "@/lib/baskets";
 import { graduationProgress } from "@/lib/curve";
 import { compact, price, usd } from "@/lib/format";
 import { useStore } from "@/lib/store";
-import { BasketMark } from "./BasketMark";
+import { AnimatedNumber } from "./AnimatedNumber";
+import { BasketOrbit } from "./BasketOrbit";
 import { Delta } from "./Delta";
 import { Sparkline } from "./Sparkline";
 
 export function Hero() {
-  const { baskets, trades } = useStore();
+  const { baskets } = useStore();
   const featured = [...baskets].sort((a, b) => changePct(b) - changePct(a))[0];
 
   const totalCap = baskets.reduce((sum, basket) => sum + marketCapUsd(basket), 0);
@@ -18,88 +19,82 @@ export function Hero() {
   const holders = baskets.reduce((sum, basket) => sum + basket.holders, 0);
 
   return (
-    <section className="relative mx-auto max-w-7xl px-4 pb-16 pt-14 sm:px-6 sm:pt-20">
-      <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="animate-fade-up">
+    <section className="relative mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 sm:pt-24">
+      <div className="grid items-center gap-12 lg:grid-cols-[1.16fr_0.84fr]">
+        <div>
           <span className="chip">
             <span className="h-1.5 w-1.5 rounded-full bg-lime-400 animate-breathe" />
             Public beta · simulated markets
           </span>
 
-          <h1 className="headline mt-6 text-5xl font-semibold text-mist-100 sm:text-6xl lg:text-7xl">
+          <h1 className="headline mt-7 text-[3rem] text-mist-100 sm:text-6xl lg:text-[4.5rem]">
             Launch a <span className="text-gradient">basket</span>,<br />
-            not another single coin.
+            not another coin.
           </h1>
 
-          <p className="mt-6 max-w-xl text-base leading-relaxed text-mist-300 sm:text-lg">
-            Pick your sleeves, set the weights, deploy in one click. BasketLaunch mints a single
-            token backed by the whole basket and prices it on a bonding curve — with trading fees
-            flowing straight back into the basket&apos;s rebalance vault.
+          <p className="mt-7 max-w-lg text-base leading-relaxed text-mist-300 sm:text-lg">
+            Pick your sleeves, set the weights, deploy in one click. One token backed by the whole
+            basket, priced on a bonding curve — with fees flowing back into the basket itself.
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="/launch" className="btn-primary px-6 py-3 text-base">
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <Link href="/launch" className="btn-primary px-7 py-3.5 text-base">
               Launch a basket
             </Link>
-            <Link href="#explore" className="btn-ghost px-6 py-3 text-base">
-              Explore live baskets
+            <Link href="/swap" className="btn-ghost px-7 py-3.5 text-base">
+              Swap tokens
             </Link>
           </div>
 
-          <dl className="mt-10 grid max-w-xl grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
+          <dl className="mt-12 grid max-w-xl grid-cols-2 gap-x-6 gap-y-6 border-t border-white/[0.07] pt-8 sm:grid-cols-4">
             <Stat label="Baskets" value={String(baskets.length)} />
-            <Stat label="Total mcap" value={usd(totalCap)} />
+            <Stat label="Total mcap" value={usd(totalCap)} live={totalCap} format={usd} />
             <Stat label="Graduated" value={String(graduated)} />
             <Stat label="Holders" value={compact(holders)} />
           </dl>
         </div>
 
         {featured ? (
-          <div className="animate-fade-up [animation-delay:120ms]">
-            <div className="panel relative overflow-hidden p-6 shadow-panel">
-              <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-lime-400/12 blur-3xl" />
+          <div className="relative">
+            <BasketOrbit basket={featured} />
 
+            <div className="panel mx-auto -mt-4 max-w-sm p-4">
               <div className="flex items-center justify-between">
-                <span className="label">Top mover right now</span>
-                <span className="chip text-[10px]">{trades.length} trades tracked</span>
+                <span className="label">Top mover</span>
+                <Link
+                  href={`/basket/${featured.slug}`}
+                  className="text-[11px] text-mist-500 transition hover:text-lime-300"
+                >
+                  open →
+                </Link>
               </div>
 
-              <div className="mt-5 flex items-center gap-4">
-                <BasketMark basket={featured} size={56} />
+              <div className="mt-3 flex items-end justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="font-display text-xl font-semibold text-mist-100">
+                  <div className="truncate font-display text-lg font-semibold text-mist-100">
                     {featured.name}
                   </div>
-                  <div className="num text-sm text-mist-500">${featured.ticker}</div>
+                  <div className="num text-xs text-mist-500">${featured.ticker}</div>
                 </div>
-                <div className="ml-auto text-right">
-                  <div className="num text-lg text-mist-100">{price(priceUsd(featured))}</div>
-                  <Delta value={changePct(featured)} />
+                <div className="text-right">
+                  <AnimatedNumber
+                    value={priceUsd(featured)}
+                    format={price}
+                    className="num block text-base text-mist-100"
+                  />
+                  <Delta value={changePct(featured)} className="justify-end text-xs" />
                 </div>
               </div>
 
-              <div className="mt-5">
+              <div className="mt-3">
                 <Sparkline
-                  values={priceHistory(featured, 48)}
-                  width={520}
-                  height={92}
+                  values={priceHistory(featured, 44)}
+                  width={420}
+                  height={54}
                   fluid
                   positive={changePct(featured) >= 0}
                 />
               </div>
-
-              <div className="mt-5 grid grid-cols-3 gap-3 border-t border-white/[0.06] pt-4">
-                {featured.components.slice(0, 3).map((component) => (
-                  <div key={component.symbol}>
-                    <div className="num text-sm text-mist-100">{component.symbol}</div>
-                    <div className="text-[11px] text-mist-500">{component.weight}% weight</div>
-                  </div>
-                ))}
-              </div>
-
-              <Link href={`/basket/${featured.slug}`} className="btn-ghost mt-5 w-full py-2.5">
-                Open basket
-              </Link>
             </div>
           </div>
         ) : null}
@@ -108,11 +103,27 @@ export function Hero() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({
+  label,
+  value,
+  live,
+  format,
+}: {
+  label: string;
+  value: string;
+  live?: number;
+  format?: (value: number) => string;
+}) {
   return (
     <div>
       <dt className="label">{label}</dt>
-      <dd className="num mt-1 text-xl text-mist-100">{value}</dd>
+      <dd className="num mt-1.5 text-xl text-mist-100">
+        {live !== undefined && format ? (
+          <AnimatedNumber value={live} format={format} />
+        ) : (
+          value
+        )}
+      </dd>
     </div>
   );
 }

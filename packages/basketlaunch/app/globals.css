@@ -2,11 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --font-display: "Clash Grotesk", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
-}
+/* Font variables are injected on <html> by next/font (see app/layout.tsx). */
 
 html {
   scroll-behavior: smooth;
@@ -15,23 +11,129 @@ html {
 body {
   background-color: #05070b;
   color: #edf2f7;
-  /* Deep-space backdrop: two soft accent blooms over a fine grid. */
-  background-image:
-    radial-gradient(900px 520px at 78% -8%, rgba(142, 123, 255, 0.16), transparent 62%),
-    radial-gradient(760px 460px at 12% 2%, rgba(194, 242, 78, 0.12), transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
-  background-size: auto, auto, 56px 56px, 56px 56px;
-  background-attachment: fixed, fixed, fixed, fixed;
 }
+
+::selection {
+  background: rgba(194, 242, 78, 0.24);
+  color: #edf2f7;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(194, 242, 78, 0.35);
+  background-clip: content-box;
+}
+
+:focus-visible {
+  outline: 2px solid rgba(194, 242, 78, 0.7);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ---------------------------------------------------------------- backdrop */
+
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.021) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.021) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 120% 80% at 50% 0%, #000 35%, transparent 78%);
+}
+
+.aurora {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(90px);
+  will-change: transform;
+}
+
+.aurora-lime {
+  top: -22rem;
+  left: -14rem;
+  height: 42rem;
+  width: 42rem;
+  background: radial-gradient(circle, rgba(168, 224, 31, 0.3), transparent 68%);
+  animation: drift-a 26s ease-in-out infinite alternate;
+}
+
+.aurora-iris {
+  top: -18rem;
+  right: -16rem;
+  height: 46rem;
+  width: 46rem;
+  background: radial-gradient(circle, rgba(142, 123, 255, 0.28), transparent 70%);
+  animation: drift-b 32s ease-in-out infinite alternate;
+}
+
+@keyframes drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(7rem, 4rem, 0) scale(1.14); }
+}
+
+@keyframes drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1.08); }
+  to { transform: translate3d(-6rem, 5rem, 0) scale(0.94); }
+}
+
+.bg-vignette {
+  background: radial-gradient(ellipse 90% 65% at 50% 0%, transparent 38%, rgba(5, 7, 11, 0.85) 100%);
+}
+
+/* Film grain: one inline turbulence tile, no image request. */
+.bg-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ------------------------------------------------------------- components */
 
 @layer components {
   .panel {
-    @apply rounded-xl2 border border-white/[0.07] bg-white/[0.025] backdrop-blur-[2px];
+    @apply relative rounded-xl2 border border-white/[0.08] bg-gradient-to-b from-white/[0.055]
+           to-white/[0.018] backdrop-blur-[2px];
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+      0 18px 40px -28px rgba(0, 0, 0, 0.9);
+  }
+
+  /* A light catching the top edge — what separates a card from a grey box. */
+  .panel::before {
+    content: "";
+    position: absolute;
+    inset-inline: 1.25rem;
+    top: -1px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(194, 242, 78, 0.45), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
   }
 
   .panel-hover {
-    @apply transition duration-200 hover:border-lime-400/35 hover:bg-white/[0.045];
+    @apply transition duration-300 hover:-translate-y-0.5 hover:border-lime-400/30;
+  }
+
+  .panel-hover:hover {
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.08),
+      0 26px 50px -26px rgba(0, 0, 0, 0.95),
+      0 0 34px -18px rgba(194, 242, 78, 0.55);
+  }
+
+  .panel-hover:hover::before {
+    opacity: 1;
   }
 
   .btn {
@@ -40,15 +142,31 @@ body {
   }
 
   .btn-primary {
-    @apply btn bg-lime-400 text-ink-900 hover:bg-lime-300 hover:shadow-glow;
+    @apply btn text-ink-900;
+    background: linear-gradient(180deg, #d6f87a 0%, #c2f24e 44%, #a8e01f 100%);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.45),
+      0 10px 26px -14px rgba(194, 242, 78, 0.85);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.07);
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.5),
+      0 14px 34px -12px rgba(194, 242, 78, 0.95);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
   }
 
   .btn-ghost {
-    @apply btn border border-white/10 text-mist-100 hover:border-lime-400/40 hover:text-lime-200;
+    @apply btn border border-white/[0.12] bg-white/[0.03] text-mist-100
+           hover:border-lime-400/40 hover:bg-white/[0.06] hover:text-lime-200;
   }
 
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03]
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035]
            px-3 py-1 text-xs font-medium text-mist-300;
   }
 
@@ -57,11 +175,11 @@ body {
   }
 
   .label {
-    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-mist-500;
+    @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-mist-500;
   }
 
   .field {
-    @apply w-full rounded-xl border border-white/10 bg-ink-800/70 px-4 py-3 text-sm text-mist-100
+    @apply w-full rounded-xl border border-white/10 bg-ink-900/60 px-4 py-3 text-sm text-mist-100
            outline-none transition placeholder:text-mist-700 focus:border-lime-400/60
            focus:ring-2 focus:ring-lime-400/15;
   }
@@ -69,15 +187,38 @@ body {
 
 .headline {
   font-family: var(--font-display);
-  letter-spacing: -0.035em;
+  letter-spacing: -0.04em;
   line-height: 0.94;
+  font-weight: 700;
 }
 
 .text-gradient {
-  background: linear-gradient(96deg, #edf2f7 4%, #c2f24e 48%, #4fe3cf 96%);
+  background: linear-gradient(96deg, #edf2f7 2%, #c2f24e 46%, #4fe3cf 92%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+@keyframes orbit-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Value changed: brief tint, no layout shift. */
+.tick-up {
+  animation: tick-up 0.7s ease-out;
+}
+.tick-down {
+  animation: tick-down 0.7s ease-out;
+}
+
+@keyframes tick-up {
+  0% { color: #c2f24e; }
+  100% { color: inherit; }
+}
+@keyframes tick-down {
+  0% { color: #ff6b85; }
+  100% { color: inherit; }
 }
 
 .hide-scrollbar::-webkit-scrollbar {

@@ -1,9 +1,34 @@
 import type { Metadata } from "next";
+import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { StoreProvider } from "@/lib/store";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Ticker } from "@/components/Ticker";
 import { Footer } from "@/components/Footer";
+import { Backdrop } from "@/components/Backdrop";
+
+const display = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const body = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+// Every price, balance and quote in the UI is tabular — a real mono carries
+// the whole product's "terminal" feel.
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "BasketLaunch — launch a basket of Solana tokens",
@@ -16,12 +41,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body className="font-body antialiased">
+        <Backdrop />
         <StoreProvider>
           <SiteHeader />
           <Ticker />
-          <main>{children}</main>
+          <main className="relative">{children}</main>
           <Footer />
         </StoreProvider>
       </body>

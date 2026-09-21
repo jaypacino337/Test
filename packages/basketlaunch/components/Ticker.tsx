@@ -3,6 +3,7 @@
 import { useStore } from "@/lib/store";
 import { TOKENS } from "@/lib/tokens";
 import { price } from "@/lib/format";
+import { AnimatedNumber } from "./AnimatedNumber";
 
 /** Scrolling component-price strip under the header. */
 export function Ticker() {
@@ -22,7 +23,7 @@ export function Ticker() {
               <span key={`${copy}-${token.symbol}`} className="flex items-center gap-2 text-xs">
                 <span style={{ color: token.tint }}>{token.glyph}</span>
                 <span className="font-semibold text-mist-300">{token.symbol}</span>
-                <span className="num text-mist-500">{price(token.live)}</span>
+                <AnimatedNumber value={token.live} format={price} className="num text-mist-500" />
                 <span className={`num ${token.change >= 0 ? "text-lime-400" : "text-rose-400"}`}>
                   {token.change >= 0 ? "+" : ""}
                   {token.change.toFixed(2)}%

@@ -3,6 +3,7 @@ import { Basket, changePct, marketCapUsd, priceHistory, priceUsd } from "@/lib/b
 import { GRADUATION_SOL, graduationProgress, hasGraduated } from "@/lib/curve";
 import { compact, price, sol, usd } from "@/lib/format";
 import { SECTOR_LABELS } from "@/lib/tokens";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { BasketMark } from "./BasketMark";
 import { Delta } from "./Delta";
 import { Sparkline } from "./Sparkline";
@@ -15,7 +16,7 @@ export function BasketCard({ basket }: { basket: Basket }) {
   return (
     <Link
       href={`/basket/${basket.slug}`}
-      className="panel panel-hover group flex flex-col gap-4 p-5"
+      className="panel panel-hover group flex h-full flex-col gap-4 p-5"
     >
       <div className="flex items-start gap-3">
         <BasketMark basket={basket} />
@@ -26,7 +27,9 @@ export function BasketCard({ basket }: { basket: Basket }) {
             </span>
             <span className="num text-xs text-mist-500">${basket.ticker}</span>
           </div>
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-mist-500">{basket.tagline}</p>
+          <p className="mt-1 line-clamp-2 min-h-[2.1rem] text-xs leading-relaxed text-mist-500">
+            {basket.tagline}
+          </p>
         </div>
         {basket.local ? (
           <span className="chip border-lime-400/40 text-lime-300">yours</span>
@@ -34,17 +37,26 @@ export function BasketCard({ basket }: { basket: Basket }) {
       </div>
 
       <div className="flex flex-wrap gap-1.5">
-        {basket.components.map((component) => (
+        {basket.components.slice(0, 4).map((component) => (
           <span key={component.symbol} className="chip px-2 py-0.5 text-[11px]">
             {component.symbol}
             <span className="num text-mist-500">{component.weight}%</span>
           </span>
         ))}
+        {basket.components.length > 4 ? (
+          <span className="chip px-2 py-0.5 text-[11px] text-mist-500">
+            +{basket.components.length - 4}
+          </span>
+        ) : null}
       </div>
 
-      <div className="flex items-end justify-between gap-3">
+      <div className="mt-auto flex items-end justify-between gap-3">
         <div>
-          <div className="num text-lg text-mist-100">{price(priceUsd(basket))}</div>
+          <AnimatedNumber
+            value={priceUsd(basket)}
+            format={price}
+            className="num block text-lg text-mist-100"
+          />
           <Delta value={change} />
         </div>
         <Sparkline values={priceHistory(basket, 28)} positive={change >= 0} />

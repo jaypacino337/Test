@@ -23,11 +23,11 @@ export default function SwapPage() {
         </p>
       </header>
 
-      <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,460px)_1fr]">
+      <div className="mt-10 grid items-start gap-6 lg:grid-cols-[minmax(0,460px)_1fr]">
         <div className="min-w-0">
           <SwapCard />
         </div>
-        <div className="grid min-w-0 gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+        <div className="grid min-w-0 content-start gap-6 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
           <PoolList />
           <RecentSwaps />
         </div>

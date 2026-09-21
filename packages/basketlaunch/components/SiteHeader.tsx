@@ -18,7 +18,7 @@ export function SiteHeader() {
   const { wallet, connect, disconnect } = useStore();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-ink-900/80 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-ink-900/70 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-6 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <span className="grid h-8 w-8 place-items-center rounded-lg bg-lime-400 font-display text-base font-bold text-ink-900">
@@ -39,8 +39,10 @@ export function SiteHeader() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
-                  active ? "bg-white/[0.07] text-mist-100" : "text-mist-500 hover:text-mist-100"
+                className={`relative rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-lime-400/10 text-lime-200 ring-1 ring-inset ring-lime-400/25"
+                    : "text-mist-500 hover:bg-white/[0.04] hover:text-mist-100"
                 }`}
               >
                 {item.label}
@@ -75,7 +77,9 @@ export function SiteHeader() {
               key={item.href}
               href={item.href}
               className={`whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                active ? "bg-white/[0.07] text-mist-100" : "text-mist-500"
+                active
+                  ? "bg-lime-400/10 text-lime-200 ring-1 ring-inset ring-lime-400/25"
+                  : "text-mist-500"
               }`}
             >
               {item.label}
