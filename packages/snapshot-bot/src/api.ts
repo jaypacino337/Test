@@ -1,46 +1,50 @@
 import cors from "cors";
 import express from "express";
-import { loadConfig } from "@sherwood/shared";
-import type { StatsResponse } from "@sherwood/shared";
-import { SherwoodDb } from "./db";
+import type { DocStore, SherwoodConfig, SherwoodStats } from "@sherwood/shared";
+import { statsKey, toResponse } from "./stats";
 
-export function startApi(db: SherwoodDb) {
-  const config = loadConfig();
+/**
+ * Read-only stats API. The website reads Supabase directly when it's
+ * configured; this endpoint serves the same numbers from whichever store the
+ * bot uses (it's the only way to read the file store on a Railway volume).
+ */
+export function createApi(store: DocStore, config: Pick<SherwoodConfig, "mint" | "snapshotIntervalMs" | "live">) {
+  const mint = config.mint.toBase58();
   const app = express();
+  app.disable("x-powered-by");
   app.use(cors());
 
-  app.get("/api/stats", (_req, res) => {
-    const lastSnapshot = db.getLatestSnapshot();
-    const nextSnapshotAt = lastSnapshot
-      ? new Date(new Date(lastSnapshot.takenAt).getTime() + config.snapshotIntervalMs).toISOString()
-      : null;
+  const load = () => store.get<SherwoodStats>(statsKey(mint));
 
-    const response: StatsResponse = {
-      mint: config.mint.toBase58(),
-      lastSnapshot,
-      nextSnapshotAt,
-      totalDistributedLamports: db.getTotalDistributedLamports(),
-      totalHarvestedLamports: db.getTotalHarvestedLamports(),
-      holderCount: lastSnapshot?.holderCount ?? 0,
-    };
-    res.json(response);
-  });
-
-  app.get("/api/distributions/recent", (req, res) => {
-    const lastSnapshot = db.getLatestSnapshot();
-    if (!lastSnapshot) {
-      res.json([]);
-      return;
+  app.get("/api/stats", async (_req, res) => {
+    try {
+      res.json(toResponse(await load(), mint, config.snapshotIntervalMs, config.live));
+    } catch (err) {
+      res.status(503).json({ error: (err as Error).message.slice(0, 200) });
     }
-    const limit = Math.min(200, Number(req.query.limit ?? 50));
-    res.json(db.getRecentDistributions(lastSnapshot.id, limit));
   });
 
-  app.get("/healthz", (_req, res) => res.json({ ok: true }));
+  app.get("/api/distributions/recent", async (req, res) => {
+    try {
+      const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+      res.json(((await load())?.recentDistributions ?? []).slice(0, limit));
+    } catch (err) {
+      res.status(503).json({ error: (err as Error).message.slice(0, 200) });
+    }
+  });
 
-  app.listen(config.apiPort, () => {
-    console.log(`[api] stats API listening on :${config.apiPort}`);
+  app.get(["/healthz", "/health"], async (_req, res) => {
+    const s = await load().catch(() => null);
+    res.json({ ok: true, live: config.live, cycles: s?.cycles ?? 0, last: s?.lastCycle ?? null });
   });
 
   return app;
+}
+
+export function startApi(store: DocStore, config: SherwoodConfig) {
+  const app = createApi(store, config);
+  const server = app.listen(config.apiPort, () => {
+    console.log(`[api] stats API listening on :${config.apiPort}`);
+  });
+  return server;
 }

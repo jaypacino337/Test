@@ -6,7 +6,9 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "harvest": "ts-node src/index.ts"
+    "harvest": "ts-node src/index.ts",
+    "test": "node --test -r ts-node/register test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@sherwood/shared": "^0.1.0",

@@ -11,8 +11,12 @@ export async function detectTokenProgram(connection: Connection, mint: PublicKey
 /**
  * Snapshots every holder of `mint`, aggregating balances across multiple
  * token accounts owned by the same wallet, and excludes known non-holder
- * addresses (LP pool vaults, the treasury, burn address, etc) so the
- * protocol doesn't airdrop itself.
+ * addresses so the protocol doesn't airdrop itself.
+ *
+ * Owners that are PDAs (off the ed25519 curve) are always excluded: those are
+ * the pump.fun bonding curve, PumpSwap/Raydium pool vaults, lockers. Before
+ * graduation the bonding curve holds most of the supply, so without this it
+ * would receive most of every airdrop. Real wallets are always on-curve.
  */
 export async function fetchHolders(
   connection: Connection,
@@ -40,7 +44,7 @@ export async function fetchHolders(
     if (unpacked.isFrozen) continue;
 
     const owner = unpacked.owner.toBase58();
-    if (excludedOwners.has(owner)) continue;
+    if (excludedOwners.has(owner) || !PublicKey.isOnCurve(unpacked.owner.toBytes())) continue;
 
     balances.set(owner, (balances.get(owner) ?? 0n) + unpacked.amount);
     if (!representativeAccount.has(owner)) representativeAccount.set(owner, pubkey.toBase58());

@@ -12,8 +12,8 @@ fee-funded, self-distributing token:
 5. **Airdrop** — the rewards vault pays out pro-rata to every eligible holder, automatically, no claiming.
 
 This repo is the full working implementation: on-chain interactions, the
-scheduler/bot, a SQLite ledger of every snapshot and payout, a stats API, and
-a professional marketing website that reads live from it.
+scheduler/bot, crash-safe payout plans and stats in Supabase, a stats API, and
+a website that reads live from it.
 
 ## Why "Sherwood," not "Robinhood"
 
@@ -28,30 +28,31 @@ and other legal/risk notes worth reading before you launch this for real.
 
 ```
 packages/
-  shared/          env config, shared types, RPC helper
-  token-launch/    optional Token-2022 self-launch mint (transfer-fee extension)
-  fee-harvester/   claims pump.fun creator fees + Token-2022 withheld fees, splits them
+  shared/          env config, shared types, versioned doc store (Supabase or JSON files)
+  fee-harvester/   claims pump.fun creator fees via PumpPortal (signed locally), splits them into the vaults
   autolp/          deposits the LP-bound share into the Raydium pool
-  snapshot-bot/    the 15-minute cron: snapshot holders -> compute payouts -> airdrop -> persist -> serve /api/stats
-  website/         Next.js + Tailwind marketing site & live dashboard
+  snapshot-bot/    the 15-min loop: resume → harvest → LP → snapshot → crash-safe airdrop → stats; serves /api/stats
+  token-launch/    optional Token-2022 self-launch mint (transfer-fee extension)
+  website-v2/      Next.js 16 site (standalone app, deploy to Vercel), reads live stats
+supabase/schema.sql  the one table the bot writes and the site reads
+deploy/            Railway Dockerfile for the bot (railway.json at the root)
 docs/
   ARCHITECTURE.md  data-flow diagram + package responsibilities
-  DEPLOYMENT.md    step-by-step devnet -> mainnet guide
-  DISCLAIMER.md    legal / risk / trademark notes — read before launching publicly
+  DEPLOYMENT.md    Railway + Supabase + Vercel, step by step
+  DISCLAIMER.md    legal / risk / trademark notes. Read before launching publicly.
 ```
 
-## Quickstart (devnet)
+## Quickstart
 
 ```bash
-npm install
-cp .env.example .env          # fill in mint + wallet paths, see docs/DEPLOYMENT.md
-npm run build
-npm run start:bot              # scheduler + stats API
-npm run dev:website             # marketing site, in a separate shell
+npm install && npm run build
+cp .env.example .env          # LIVE unset = dry run: reads the chain, sends nothing
+npm run start:bot             # cycle + stats API on :4000
+cd packages/website-v2 && npm install && BOT_API_URL=http://localhost:4000 npm run dev
+npm run typecheck && npm test
 ```
 
-Full walkthrough, including generating wallets and choosing between the
-pump.fun launch path and the self-launch Token-2022 path: **`docs/DEPLOYMENT.md`**.
+Full walkthrough: **`docs/DEPLOYMENT.md`**.
 
 ## How the fee source actually works
 
@@ -59,9 +60,8 @@ pump.fun tokens are plain SPL mints — there's no per-transfer tax to hook
 into. The real lever is pump.fun's **creator-fee sharing** program: the
 wallet that creates a coin can claim a share of its trading fees at any
 time via a permissionless `collectCreatorFee` instruction. Sherwood's
-harvester automates that claim (see
-`packages/fee-harvester/src/harvestPumpFunCreatorFees.ts`, built against
-pump.fun's public program docs) rather than pretending pump.fun supports an
+harvester automates that claim through PumpPortal's local-transaction API (see
+`packages/fee-harvester/src/harvestPumpFunCreatorFees.ts`) rather than pretending pump.fun supports an
 automatic transfer tax it doesn't. Full details in `docs/ARCHITECTURE.md`.
 
 ## Status

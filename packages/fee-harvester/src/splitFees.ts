@@ -11,7 +11,9 @@ export interface SplitResult {
 /**
  * Splits the fee-authority wallet's spendable SOL balance between the LP
  * vault and the rewards vault, leaving `reserveLamports` behind to cover
- * this wallet's own future transaction fees.
+ * this wallet's own future transaction fees. Splitting the whole spendable
+ * balance (not just this cycle's claim) means a crash between claim and split
+ * heals itself on the next cycle. With `send` false it only computes the split.
  */
 export async function splitHarvestedFees(
   connection: Connection,
@@ -19,6 +21,7 @@ export async function splitHarvestedFees(
   lpVault: PublicKey,
   rewardsVault: PublicKey,
   lpShare: number,
+  send: boolean,
   reserveLamports = 0.02 * LAMPORTS_PER_SOL
 ): Promise<SplitResult> {
   const balance = await connection.getBalance(feeAuthority.publicKey);
@@ -38,8 +41,8 @@ export async function splitHarvestedFees(
   if (toRewards > 0n) {
     tx.add(SystemProgram.transfer({ fromPubkey: feeAuthority.publicKey, toPubkey: rewardsVault, lamports: toRewards }));
   }
-  if (tx.instructions.length === 0) {
-    return { toLp: 0n, toRewards: 0n, signature: null };
+  if (tx.instructions.length === 0 || !send) {
+    return { toLp, toRewards, signature: null };
   }
 
   const signature = await sendAndConfirmTransaction(connection, tx, [feeAuthority]);

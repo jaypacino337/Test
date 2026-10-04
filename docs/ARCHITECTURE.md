@@ -31,15 +31,15 @@
                           │   1. fetch all $ARROW holders   │
                           │   2. compute pro-rata payouts   │
                           │   3. batch-send SOL transfers   │
-                          │   4. persist to SQLite          │
+                          │   4. persist to Supabase        │
                           │   5. expose /api/stats          │
                           └──────────────┬─────────────────┘
                                          │
                                          ▼
                               ┌────────────────────┐
                               │      website          │
-                              │  (packages/website)   │
-                              │  reads /api/stats      │
+                              │  (packages/website-v2)│
+                              │  reads Supabase        │
                               └────────────────────┘
 ```
 
@@ -47,12 +47,12 @@
 
 | Package | Responsibility |
 |---|---|
-| `packages/shared` | Env-driven config loader, shared TypeScript types, RPC connection helper. |
+| `packages/shared` | Env-driven config loader (keys from env secrets or files), shared types, the versioned doc store (Supabase `sherwood_docs` or JSON files). |
 | `packages/token-launch` | Optional: creates a Token-2022 mint with the `TransferFee` extension, for a self-launch (non-pump.fun) path. |
-| `packages/fee-harvester` | Claims pump.fun creator-fee rewards (bonding curve + post-graduation AMM) and/or Token-2022 withheld transfer fees; splits proceeds between the LP vault and rewards vault. |
+| `packages/fee-harvester` | Claims pump.fun creator fees (bonding curve + PumpSwap, one PumpPortal tx signed locally, net amount measured) and/or Token-2022 withheld transfer fees; splits proceeds between the LP vault and rewards vault. |
 | `packages/autolp` | Deposits the LP vault's SOL into the ARROW/SOL Raydium pool once one exists. |
-| `packages/snapshot-bot` | The orchestrator: runs the full cycle on a cron (default every 15 minutes), persists snapshots/distributions to SQLite, and serves a small stats API. |
-| `packages/website` | Next.js marketing site + live dashboard, reads from the snapshot-bot's API. |
+| `packages/snapshot-bot` | The orchestrator: runs the full cycle every 15 minutes (never overlapping), pays holders through frozen payout plans whose batch signatures are stored before broadcast (no double payouts after a crash), writes stats to the doc store, and serves a small stats API. |
+| `packages/website-v2` | Next.js 16 site + live almanac; reads stats from Supabase (or the bot API) server-side; every number is real or "—". |
 
 ## Why pump.fun fees aren't a per-transfer tax
 

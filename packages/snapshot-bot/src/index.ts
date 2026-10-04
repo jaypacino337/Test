@@ -1,28 +1,30 @@
-import { loadConfig } from "@sherwood/shared";
-import { SherwoodDb } from "./db";
+import { loadConfig, storeFromConfig } from "@sherwood/shared";
 import { startScheduler } from "./scheduler";
 import { startApi } from "./api";
 
-export { SherwoodDb } from "./db";
 export { fetchHolders } from "./holders";
-export { computePayouts, sendPayouts } from "./distribute";
+export { computePayouts, dropUnfundable, executePlan, makePlan } from "./distribute";
 export { runFullCycle, startScheduler } from "./scheduler";
-export { startApi } from "./api";
+export { createApi, startApi } from "./api";
 
 function main() {
   const config = loadConfig();
-  const db = new SherwoodDb(config.dbPath);
+  const store = storeFromConfig(config);
 
-  startApi(db);
-  startScheduler(db);
+  const server = startApi(store, config);
+  const scheduler = startScheduler(store);
 
-  const shutdown = () => {
-    console.log("\n[bot] shutting down...");
-    db.close();
+  let stopping = false;
+  const shutdown = async (sig: string) => {
+    if (stopping) return;
+    stopping = true;
+    console.log(`\n[bot] ${sig}: finishing the current cycle, then exiting...`);
+    await scheduler.stop();
+    server.close();
     process.exit(0);
   };
-  process.on("SIGINT", shutdown);
-  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", () => void shutdown("SIGINT"));
+  process.on("SIGTERM", () => void shutdown("SIGTERM"));
 }
 
 if (require.main === module) {

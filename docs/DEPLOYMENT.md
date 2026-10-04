@@ -1,106 +1,96 @@
 # Deployment guide
 
-This walks through a **devnet** dry run end-to-end. Do not point any of this
-at mainnet-beta, and do not fund any wallet with real money, until you've run
-a full cycle on devnet and read `docs/DISCLAIMER.md`.
+Three pieces, each on the host that suits it:
 
-## 0. Prerequisites
+| piece | runs on | why |
+|---|---|---|
+| `packages/snapshot-bot` (+ fee-harvester, autolp) | **Railway** | a long-running loop that holds keys; Vercel kills long processes |
+| stats + payout plans | **Supabase** (`sherwood_docs`) | a Vercel site has no disk; the bot and site share one table |
+| `packages/website-v2` | **Vercel** | Next.js, previews per PR |
 
-- Node.js >= 18.18
-- The [Solana CLI](https://docs.solanalabs.com/cli/install) (for `solana airdrop` on devnet)
-- `npm install` at the repo root (npm workspaces will link the `@sherwood/*` packages)
+Nothing touches the chain until `LIVE=true`. Run at least a week of dry-run
+cycles first, and read `docs/DISCLAIMER.md` before launching publicly.
 
-## 1. Generate wallets
-
-You need four keypairs. The Solana CLI's `solana-keygen new` works, or reuse
-`token-launch`'s `loadOrCreateKeypair` helper which generates one on first
-run:
+## 1. Wallets
 
 ```bash
-mkdir -p keys
-solana-keygen new --outfile keys/payer.json
-solana-keygen new --outfile keys/mint-authority.json
-solana-keygen new --outfile keys/fee-authority.json
+mkdir -p keys   # gitignored
+solana-keygen new --outfile keys/fee-authority.json   # = the pump.fun creator wallet
 solana-keygen new --outfile keys/lp-vault.json
 solana-keygen new --outfile keys/rewards-vault.json
-solana airdrop 2 $(solana-keygen pubkey keys/payer.json) --url devnet
 ```
 
-## 2. Choose your launch path
+Launch the coin on pump.fun **from the fee-authority wallet**: pump.fun keys
+creator-fee vaults by the creator's pubkey, so only that wallet can claim.
 
-**Path A — pump.fun (recommended, matches the live mechanism described on
-the website):** launch the coin through pump.fun's own UI/API using the
-`fee-authority` wallet as the creator (creator-fee vaults are keyed by
-creator pubkey, so whichever wallet creates the coin is the one that must
-run the harvester). Then set `MINT_ADDRESS` in `.env` to the resulting mint.
+## 2. Supabase
 
-**Path B — self-launch with Token-2022 transfer fees:**
+1. Create a project, open the SQL editor, run `supabase/schema.sql`. It creates
+   `sherwood_docs` (jsonb + `version`, RLS on, no public policies).
+2. Copy the project URL and the **service-role** key. They're server-only, used by
+   the bot and by the site's server route, and never `NEXT_PUBLIC_`.
+
+Without Supabase the bot falls back to JSON files under `DATA_DIR/store` (put a
+Railway volume at `/data`). The site can then read stats from the bot's API
+(`BOT_API_URL`) instead.
+
+## 3. Railway (bot)
+
+New service → this GitHub repo. It picks up `railway.json`
+(Dockerfile `deploy/bot.Dockerfile`, healthcheck `/healthz`). Variables:
+
+```
+MINT_ADDRESS               = <mint>
+RPC_URL                    = https://mainnet.helius-rpc.com/?api-key=…   (dedicated RPC required)
+FEE_AUTHORITY_KEYPAIR      = <secret: JSON array or base58>   ← sealed variable
+LP_VAULT_KEYPAIR           = <secret>                          ← sealed
+REWARDS_VAULT_KEYPAIR      = <secret>                          ← sealed
+LP_SHARE                   = 0.5
+SUPABASE_URL               = https://<project>.supabase.co
+SUPABASE_SERVICE_ROLE_KEY  = <service key>                     ← sealed
+RAYDIUM_POOL_ID            = (only once a Raydium CPMM pool exists)
+LIVE                       = (leave unset for the dry-run week, then "true")
+```
+
+Without Supabase, also add a volume at `/data` and `RAILWAY_RUN_UID=0` (volumes
+mount as root).
+
+What a cycle does (every `SNAPSHOT_INTERVAL_MS`, never overlapping):
+
+1. finish any payout plan an earlier cycle left open
+2. claim creator fees (PumpPortal, signed locally) and split the fee-authority balance into the two vaults
+3. auto-LP the LP vault into Raydium (if `RAYDIUM_POOL_ID` is set)
+4. snapshot holders (PDAs such as the bonding curve and pools are excluded)
+5. airdrop the rewards vault pro-rata as a frozen plan; every batch's signature is stored before broadcast
+6. write the stats doc the website reads
+
+`SIGTERM` (every Railway redeploy) lets the current cycle finish before exiting.
+After a crash, step 1 resolves any in-flight batch on-chain before anything is
+re-sent, so a holder is never paid twice.
+
+## 4. Vercel (site)
+
+Import the repo → **Root Directory `packages/website-v2`** → framework is detected. Env:
+
+```
+NEXT_PUBLIC_MINT_ADDRESS   = <mint>        (empty = "appears at launch")
+NEXT_PUBLIC_SITE_URL       = https://<domain>
+SUPABASE_URL               = …             (server-only)
+SUPABASE_SERVICE_ROLE_KEY  = …             (server-only)
+BOT_API_URL                = https://<railway-service>.up.railway.app   (fallback if no Supabase)
+```
+
+Every number on the page is either real (bot stats or DexScreener) or "—".
+
+Gate before promoting: `npm run build && npm start`, then
+`mc qa http://localhost:3000` (memcoinz) with 0 failures.
+
+## Local
 
 ```bash
-cp .env.example .env
-npm run create-mint --workspace packages/token-launch
+npm install && npm run build
+cp .env.example .env              # fill in; LIVE unset = dry run
+npm run start:bot                 # cycle + stats API on :4000
+cd packages/website-v2 && npm install && BOT_API_URL=http://localhost:4000 npm run dev
+npm run typecheck && npm test
 ```
-
-This prints a `MINT_ADDRESS` to paste into `.env`, and mints the full
-1,000,000,000 supply to the payer's associated token account. You'd then
-need to pair it into a Raydium pool yourself before `autolp` has anything to
-deposit into.
-
-## 3. Configure `.env`
-
-```bash
-cp .env.example .env
-# fill in MINT_ADDRESS, the four *_KEYPAIR_PATH vars, and EXCLUDED_OWNERS
-# (at minimum: the fee-authority, LP vault, and rewards vault addresses,
-# so the protocol doesn't airdrop itself)
-```
-
-## 4. Build the workspace
-
-```bash
-npm install
-npm run build
-```
-
-## 5. Run one harvest cycle manually
-
-```bash
-npm run harvest --workspace packages/fee-harvester
-```
-
-This claims whatever pump.fun creator fees have accrued (zero on a fresh
-devnet coin — you'll need real trading volume against the bonding curve to
-see nonzero fees) and splits the fee-authority wallet's balance into the LP
-and rewards vaults.
-
-## 6. Start the bot (scheduler + API)
-
-```bash
-npm run start:bot
-```
-
-This runs one full cycle immediately, then every `SNAPSHOT_INTERVAL_MS`
-(default 15 minutes: `*/15 * * * *`), and serves `GET /api/stats` on
-`API_PORT` (default 4000).
-
-## 7. Run the website
-
-```bash
-cp packages/website/.env.example packages/website/.env.local
-# point NEXT_PUBLIC_BOT_API_URL at the bot's API and NEXT_PUBLIC_MINT_ADDRESS
-# at your mint
-npm run dev:website
-```
-
-## Going to mainnet
-
-1. Re-run steps 1–3 with fresh, securely stored keypairs (a hardware wallet
-   or at minimum an encrypted secrets manager — not plaintext JSON files in
-   a repo or CI env var, ever).
-2. Set `RPC_URL` to a paid mainnet RPC provider (public endpoints rate-limit
-   `getProgramAccounts`, which the snapshot bot calls every cycle).
-3. Set `RAYDIUM_POOL_ID` once the coin graduates from pump.fun's bonding
-   curve, so `autolp` has a pool to deposit into.
-4. Read `docs/DISCLAIMER.md` and get your own legal advice before
-   publicly marketing a token with promised holder rewards — securities-law
-   exposure is real and jurisdiction-dependent.

@@ -15,7 +15,7 @@ export async function runAutoLpCycle() {
   const config = loadConfig();
   const connection = makeConnection(config.rpcUrl);
 
-  const poolId = process.env.RAYDIUM_POOL_ID;
+  const poolId = config.raydiumPoolId;
   if (!poolId) {
     console.warn("[autolp] RAYDIUM_POOL_ID not set — skipping (no pool to deposit into yet, e.g. pre-graduation).");
     return null;
@@ -26,6 +26,11 @@ export async function runAutoLpCycle() {
 
   if (spendable === 0n) {
     console.log("[autolp] nothing to deposit this cycle.");
+    return null;
+  }
+
+  if (!config.live) {
+    console.log(`[autolp] dry run: would deposit ${spendable} lamports into pool ${poolId} (set LIVE=true to send).`);
     return null;
   }
 

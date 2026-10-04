@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.next
+packages/website-v2
+.git
+.env
+keys
+data

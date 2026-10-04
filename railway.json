@@ -1,0 +1,14 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "deploy/bot.Dockerfile",
+    "watchPatterns": ["packages/shared/**", "packages/fee-harvester/**", "packages/autolp/**", "packages/snapshot-bot/**", "deploy/bot.Dockerfile", "package-lock.json"]
+  },
+  "deploy": {
+    "healthcheckPath": "/healthz",
+    "healthcheckTimeout": 60,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* Sherwood: dark forest editorial. Deep greens, bone/ivory type, ONE gold accent. */
+@theme {
+  --color-bg: #08120d;
+  --color-surface: #0f1d16;
+  --color-raised: #142820;
+  --color-line: #22392d;
+  --color-fg: #ece4d2;
+  --color-muted: #a5a891;
+  --color-brand: #3f7a59;
+  --color-moss: #2a5340;
+  --color-accent: #c9a24a;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jbmono), ui-monospace, monospace;
+
+  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-marquee: marquee 38s linear infinite;
+  --animate-sway: sway 7s ease-in-out infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-1.2deg); }
+    50% { transform: rotate(1.2deg); }
+  }
+}
+
+html {
+  overflow-x: clip;
+  background: var(--color-bg);
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 78% -10%, rgb(63 122 89 / 0.22), transparent 60%),
+    radial-gradient(900px 500px at -10% 30%, rgb(42 83 64 / 0.25), transparent 60%),
+    var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(201 162 74 / 0.35);
+  color: var(--color-fg);
+}
+
+/* film grain over everything, very faint */
+.grain::after {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='.9'/></svg>");
+}
+
+/* editorial column rules */
+.rule-x { background-image: linear-gradient(to right, var(--color-line), var(--color-line)); background-size: 100% 1px; background-repeat: no-repeat; }
+
+.mask-fade-x { mask-image: linear-gradient(to right, transparent, #000 10%, #000 90%, transparent); }
+
+.text-gild {
+  background: linear-gradient(100deg, #8f6f2a 0%, #e7c873 40%, #c9a24a 60%, #8f6f2a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.drop-cap::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-size: 4.2em;
+  line-height: 0.8;
+  padding: 0.08em 0.12em 0 0;
+  color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
