@@ -2,19 +2,24 @@
   "name": "sherwood-protocol",
   "private": true,
   "version": "0.1.0",
-  "description": "Sherwood Protocol ($ARROW) — a Solana token that harvests pump.fun creator fees, auto-compounds a share into liquidity, and airdrops the rest to holders every 15 minutes.",
+  "description": "Sherwood Protocol ($ARROW) \u2014 a Solana token that harvests pump.fun creator fees, auto-compounds a share into liquidity, and airdrops the rest to holders every 15 minutes.",
   "workspaces": [
-    "packages/*"
+    "packages/shared",
+    "packages/fee-harvester",
+    "packages/autolp",
+    "packages/snapshot-bot",
+    "packages/token-launch"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "dev:website": "npm run dev --workspace packages/website",
-    "start:bot": "npm run start --workspace packages/snapshot-bot"
+    "build": "npm run build -w packages/shared -w packages/fee-harvester -w packages/autolp -w packages/snapshot-bot -w packages/token-launch",
+    "typecheck": "npm run build -w packages/shared && npm run typecheck --if-present -w packages/shared -w packages/fee-harvester -w packages/autolp -w packages/snapshot-bot -w packages/token-launch && npm run typecheck --prefix packages/website-v2",
+    "test": "npm run build -w packages/shared && npm run test --if-present -w packages/fee-harvester -w packages/snapshot-bot",
+    "start:bot": "npm run start -w packages/snapshot-bot",
+    "dev:website": "npm run dev --prefix packages/website-v2",
+    "build:website": "npm run build --prefix packages/website-v2"
   },
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=20"
   },
   "license": "MIT"
 }
